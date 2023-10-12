@@ -778,19 +778,19 @@ def stability_range(P,W,O,Rains,L,param):
     M=Rains.shape[0]
     N=P.shape[1]
     stab=np.array(np.zeros(M),dtype='bool')
-    Lmb_max=np.array(np.zeros(M),dtype=complex)
+    Lmb=np.array(np.zeros((M,3*N)),dtype=complex)
     for i in range(M):
         J=Op(L,N,Rains[i],P[i],W[i],O[i],param)
         lmb,vec=np.linalg.eig(J)
         ii=np.argsort(-lmb)
         lmb=lmb[ii]
         vec=vec[:,ii]
-        Lmb_max[i]=np.max(lmb)
+        Lmb[i,:]=lmb
         if np.max(lmb)>10**(-7):
             stab[i]=True
         else:
             stab[i]=False
-    return(stab,Lmb_max)
+    return(stab,Lmb)
 
 def selec_rain(rain,Pmin,Pmax,Rains,P):
     rge=(P<Pmax) & (P>Pmin)
@@ -833,3 +833,36 @@ def show_equilibria(Rains_mode_tot,P_mode_tot,W_mode_tot,O_mode_tot,Stab_mode_to
     ax[3].set_xlabel('x $[m]$')
     ax[3].set_ylabel('O $[mm]$')
     return()
+
+def trans_rainfall(t,t_i,t_f,R_i,R_f):
+    R=np.zeros(np.shape(t))
+    for i in range(np.shape(t)[0]):
+        if t[i]<=t_i:
+            R[i]=R_i
+        elif t[i]>t_i and t[i]<t_f:
+            R[i]=(R_f-R_i)/(t_f-t_i)*(t[i]-t_i)+R_i
+        else:
+            R[i]=R_f
+    return(R,(R_f-R_i)/(t_f-t_i))
+
+def selec_time(T,t):
+    i=0
+    while t[i]<T:
+        i=i+1
+    return(i)
+
+def find_next_solution(rain,n_mode,low_P,high_P,L,param,Rains_mode_tot,P_mode_tot,W_mode_tot,O_mode_tot):
+    ind=selec_rain(rain,low_P,high_P,Rains_mode_tot[n_mode],np.mean(P_mode_tot[n_mode],axis=1))[0]
+    Rain,Pg,Wg,Og = Rains_mode_tot[n_mode][ind],P_mode_tot[n_mode][ind],W_mode_tot[n_mode][ind],O_mode_tot[n_mode][ind]
+    Rain,Pnew,Wnew,Onew = newton_iterate(500,rain,L,param,Pg,Wg,Og,crit_update = 1e-6,crit_source = 1e-10)
+    return Rain,Pnew,Wnew,Onew
+
+def period_perm(a,i_perm):
+    N=np.shape(a)[0]
+    abis=np.zeros(np.shape(a))
+    abis[:(N-i_perm)]=a[i_perm:]
+    abis[(N-i_perm):]=a[:i_perm]
+    return(abis)
+
+
+
